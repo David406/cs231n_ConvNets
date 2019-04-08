@@ -1,1 +1,1 @@
-# cs231n_ConvNets
+# Stanford CS231n: Convolutional Neural Networks for Visual Recognition Assignments
