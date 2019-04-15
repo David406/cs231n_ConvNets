@@ -185,6 +185,8 @@ def batchnorm_forward(x, gamma, beta, bn_param):
         
         running_mean = momentum * running_mean + (1-momentum) * mean
         running_var = momentum * running_var + (1-momentum) * var
+        
+        cache = (x, mean, var, gamma, beta, eps)
         #######################################################################
         #                           END OF YOUR CODE                          #
         #######################################################################
@@ -234,7 +236,23 @@ def batchnorm_backward(dout, cache):
     # Referencing the original paper (https://arxiv.org/abs/1502.03167)       #
     # might prove to be helpful.                                              #
     ###########################################################################
-    pass
+    (x, mean, var, gamma, beta, eps) = cache
+    N = x.shape[0]
+    
+    x_shifted = x - mean
+    x_bar = (x-mean)/np.sqrt(var+eps)
+    dgamma = np.sum(dout*x_bar, axis=0) 
+    dbeta = np.sum(dout, axis=0)
+    
+    dout = dout * gamma
+    dout_1 = dout / np.sqrt(var+eps)
+    dout_2 = np.sum(x_shifted * dout, axis=0)
+    #dout_2 = -1 * dout_2 / (2 * (var+eps)**1.5)
+    #dout_2 = (2/N) * dout_2 * x_shifted
+    dout_2 = -(1/N) * dout_2 * x_shifted / (var+eps)**1.5
+    dout = dout_1 + dout_2
+    
+    dx = dout - (1/N) * np.sum(dout, axis=0)
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################
