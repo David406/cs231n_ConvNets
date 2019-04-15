@@ -187,6 +187,10 @@ class FullyConnectedNet(object):
                 s2 = hidden_dims[i]
             self.params["W"+str(i+1)] = np.random.normal(0, weight_scale, s1*s2).reshape(s1,s2)
             self.params['b'+str(i+1)] = np.zeros(s2)
+            
+            if self.normalization == 'batchnorm' and i != self.num_layers-1:
+                self.params['gamma'+str(i+1)] = np.ones(s2)
+                self.params['beta'+str(i+1)] = np.zeros(s2)
         ############################################################################
         #                             END OF YOUR CODE                             #
         ############################################################################
@@ -250,8 +254,14 @@ class FullyConnectedNet(object):
         for i in range(1, self.num_layers):
             A_prev = A
             Z, affine_cache = affine_forward(A_prev, self.params['W'+str(i)], self.params['b'+str(i)])
+            if self.normalization == 'batchnorm':
+                Z, bn_cache = batchnorm_forward(Z, self.params['gamma'+str(i)], self.params['beta'+str(i)], self.bn_params[i-1])
             A, activation_cache = relu_forward(Z)
-            caches.append((affine_cache, activation_cache))
+            if self.normalization == 'batchnorm':
+                caches.append((affine_cache, activation_cache, bn_cache))
+            else:
+                caches.append((affine_cache, activation_cache))
+            
         scores, affine_cache = affine_forward(A, self.params['W'+str(self.num_layers)], self.params['b'+str(self.num_layers)])
         caches.append((affine_cache, scores))
         ############################################################################
@@ -283,6 +293,8 @@ class FullyConnectedNet(object):
         for i in reversed(range(1,self.num_layers)):
             loss += 0.5 * self.reg * np.sum(np.square(self.params['W'+str(i)]))
             dout = relu_backward(dout, caches[i-1][1])
+            if self.normalization == 'batchnorm':
+                dout, grads['gamma'+str(i)], grads['beta'+str(i)] = batchnorm_backward_alt(dout, caches[i-1][2])
             dout, grads['W'+str(i)], grads['b'+str(i)] = affine_backward(dout, caches[i-1][0])
             grads['W'+str(i)] += self.reg * self.params['W'+str(i)]
         ############################################################################
