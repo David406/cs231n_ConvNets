@@ -333,7 +333,14 @@ def layernorm_forward(x, gamma, beta, ln_param):
     # transformations you could perform, that would enable you to copy over   #
     # the batch norm code and leave it almost unchanged?                      #
     ###########################################################################
-    pass
+    x_T = x.T
+    mean = np.mean(x_T, axis=0)
+    var = np.var(x_T, axis=0)
+    
+    out = (x_T-mean) / np.sqrt(var+eps)
+    out = gamma * out.T + beta
+    
+    cache = (x, mean, var, gamma, beta, eps)
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################
@@ -364,7 +371,25 @@ def layernorm_backward(dout, cache):
     # implementation of batch normalization. The hints to the forward pass    #
     # still apply!                                                            #
     ###########################################################################
-    pass
+    (x, mean, var, gamma, beta, eps) = cache
+    x_T = x.T
+    N = x_T.shape[0]
+    
+    x_T_shifted = x_T - mean
+    x_T_bar = x_T_shifted/np.sqrt(var+eps)
+    dgamma = np.sum(dout*x_T_bar.T, axis=0) 
+    dbeta = np.sum(dout, axis=0)
+    
+    dout = dout * gamma
+    dout = dout.T
+    dout_1 = dout / np.sqrt(var+eps)
+    dout_2 = np.sum(x_T_shifted * dout, axis=0)
+    #dout_2 = -1 * dout_2 / (2 * (var+eps)**1.5)
+    #dout_2 = (2/N) * dout_2 * x_shifted
+    dout_2 = -(1/N) * dout_2 * x_T_shifted / (var+eps)**1.5
+    dout = dout_1 + dout_2
+    dout = dout - (1/N) * np.sum(dout, axis=0)
+    dx = dout.T
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################

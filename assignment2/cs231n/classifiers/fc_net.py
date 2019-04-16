@@ -188,7 +188,7 @@ class FullyConnectedNet(object):
             self.params["W"+str(i+1)] = np.random.normal(0, weight_scale, s1*s2).reshape(s1,s2)
             self.params['b'+str(i+1)] = np.zeros(s2)
             
-            if self.normalization == 'batchnorm' and i != self.num_layers-1:
+            if (self.normalization == 'batchnorm' or self.normalization == 'layernorm') and i != self.num_layers-1:
                 self.params['gamma'+str(i+1)] = np.ones(s2)
                 self.params['beta'+str(i+1)] = np.zeros(s2)
         ############################################################################
@@ -256,9 +256,13 @@ class FullyConnectedNet(object):
             Z, affine_cache = affine_forward(A_prev, self.params['W'+str(i)], self.params['b'+str(i)])
             if self.normalization == 'batchnorm':
                 Z, bn_cache = batchnorm_forward(Z, self.params['gamma'+str(i)], self.params['beta'+str(i)], self.bn_params[i-1])
+            if self.normalization == 'layernorm':
+                Z, ln_cache = layernorm_forward(Z, self.params['gamma'+str(i)], self.params['beta'+str(i)], self.bn_params[i-1])
             A, activation_cache = relu_forward(Z)
             if self.normalization == 'batchnorm':
                 caches.append((affine_cache, activation_cache, bn_cache))
+            elif self.normalization == 'layernorm':
+                caches.append((affine_cache, activation_cache, ln_cache))
             else:
                 caches.append((affine_cache, activation_cache))
             
@@ -295,6 +299,8 @@ class FullyConnectedNet(object):
             dout = relu_backward(dout, caches[i-1][1])
             if self.normalization == 'batchnorm':
                 dout, grads['gamma'+str(i)], grads['beta'+str(i)] = batchnorm_backward_alt(dout, caches[i-1][2])
+            if self.normalization == 'layernorm':
+                dout, grads['gamma'+str(i)], grads['beta'+str(i)] = layernorm_backward(dout, caches[i-1][2])
             dout, grads['W'+str(i)], grads['b'+str(i)] = affine_backward(dout, caches[i-1][0])
             grads['W'+str(i)] += self.reg * self.params['W'+str(i)]
         ############################################################################
